@@ -6,8 +6,10 @@ from mock_data import mock_catalog
 from config import db
 from bson import ObjectId
 from flask import Flask, request, abort
+from flask_cors import CORS
 
 app = Flask('server')
+CORS(app) # disable CORS policy
 
 @app.route("/home")
 def home():
@@ -46,6 +48,25 @@ def save_product():
   product = request.get_json()
   db.products.insert_one(product)
 
+  
+  if  not "title" in product or len(product["title"]) < 6:
+    return abort(400, "Title must exist and should be longer than 5")
+
+  if not "price" in product:
+    return abort(400, "price is required")
+
+  if type(product["price"]) != float and type(product["price"]) != int:
+    return abort(400, "price must be a valid number")
+
+  if product["price"] <= 0:
+    return abort(400, "price must be greater than zero")
+
+  if not "image" in product or len(product["category"]) < 1:
+    return abort(400, "there needs to be an image")
+
+  if not "category" in product:
+    return abort(400, "there needs to be a category")  
+
   print ("Product Saved")
   print(product)
 
@@ -83,6 +104,9 @@ def get_total():
 def find_product(id):
     prod = db.products.find_one({"_id": ObjectId(id)})
     prod["_id"] = str(prod["_id"])
+
+    if not ObjectId.is_valid(id):
+      return abort(400, "id must be a valid object")
 
     return json.dumps(prod)
             
@@ -144,6 +168,8 @@ def get_coupon_codes():
 
     return json.dumps(results)
 
+
+
 #2 - get /api/couponCodes/<code>
 @app.route("/api/couponCodes/<code>")
 def get_coupon(code):
@@ -155,6 +181,8 @@ def get_coupon(code):
 
     return json.dumps(coupon)
 
+
+
 #3 - POST /api/couponCodes
 @app.route("/api/couponCodes", methods=["post"])
 def save_coupon():
@@ -164,8 +192,11 @@ def save_coupon():
   if not "code" in coupon or len(coupon["code"]) < 5:
     return abort(400, "Code is required and should contain at least 5 chars")
 
-  if not "discount" in coupon or type(coupon["discount"]) != type(int) or type(coupon["discount"]) != type(float): 
-    return abort(400, "Discount is required ")
+  if not "discount" in coupon:  
+    return abort(400, "Discount is required")
+  
+  if type(coupon["discount"]) != int and type(coupon["discount"]) != float:
+    return abort(400, "Discount should be a valid number")
 
   if coupon ["discount"] < 0 or coupon ["discount"] > 31 :
     return abort(400, "Discount should be between 0 and 31")
